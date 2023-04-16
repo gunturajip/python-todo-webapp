@@ -72,10 +72,17 @@
             </thead>
 
             <tbody>
+                {% for todo in todos %}
                 <tr>
                     <td>1</td>
-                    <td>task1</td>
-                    <td><button type="button" class="btn btn-outline-warning btn-sm state" data-source="1">Todo</button>
+                    <td>{{ todo.title }}</td>
+                    <td><button type="button" class="btn btn-outline-warning btn-sm state" data-source="1">
+                            {% if todo.completed %}
+                            Completed
+                            {% else %}
+                            Uncompleted
+                            {% endif %}
+                        </button>
                     </td>
                     <td>
                         <button type="button" class="btn btn-outline-info btn-sm" data-bs-toggle="modal"
@@ -88,23 +95,7 @@
                         </button>
                     </td>
                 </tr>
-                <tr>
-                    <td>2</td>
-                    <td>task2</td>
-                    <td><button type="button" class="btn btn-outline-warning btn-sm state" data-source="2">Todo</button>
-                    </td>
-                    <td>
-                        <button type="button" class="btn btn-outline-info btn-sm" data-bs-toggle="modal"
-                            data-bs-target="#task-modal" data-source="2" data-content="task2">
-                            <i class="fa fa-pen fa-1" aria-hidden="true"></i>
-                        </button>
-                    </td>
-                    <td><button class="btn btn-outline-secondary btn-sm remove" data-source="2" type="button">
-                            <i class="fa fa-trash fa-1" aria-hidden="true"></i>
-                        </button>
-                    </td>
-                </tr>
-
+                {% endfor %}
             </tbody>
         </table>
     </div>

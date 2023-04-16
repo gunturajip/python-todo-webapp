@@ -1,8 +1,9 @@
 from config import app, db, jwt
-from flask import jsonify, redirect, render_template, request
+from flask import jsonify, redirect, render_template, request, make_response
 from flask_jwt_extended import create_access_token, jwt_required, get_jwt_identity, get_jwt
 from flask_bcrypt import generate_password_hash, check_password_hash
 from flask_wtf import FlaskForm
+# from flask_wtf.csrf import validate_csrf
 from wtforms import StringField, EmailField, BooleanField, validators
 from models.user import User
 from models.todo import Todo
@@ -51,15 +52,21 @@ def login():
         if not user or not check_password_hash(user.password, form.password.data):
             return jsonify({'status': 400, 'message': 'failed to login', 'error': form.errors}), 400
         token = create_access_token(identity=user.id)
-        return jsonify({'status': 200, 'message': 'successfully login', 'token': token}), 200
+        response = make_response(render_template('todo.html'))
+        response.set_cookie('auth-cookie', token)
+        return response
+        # return jsonify({'status': 200, 'message': 'successfully login', 'token': token}), 200
 
 @app.route('/logout', methods=['POST'])
 @jwt_required()
 def logout():
-    jti = get_jwt()['jti']
-    db.session.add(TokenBlocklist(jti=jti))
-    db.session.commit()
-    return jsonify({'status': 200, 'message': 'successfully logged out'}), 200
+    # jti = get_jwt()['jti']
+    # db.session.add(TokenBlocklist(jti=jti))
+    # db.session.commit()
+    # return jsonify({'status': 200, 'message': 'successfully logged out'}), 200
+    response = make_response(render_template('login.html'))
+    response.delete_cookie('auth-token')
+    return response
 
 @app.route('/todo', methods=['GET'])
 @jwt_required()
@@ -67,7 +74,7 @@ def get_todos():
     user_id = get_jwt_identity()
     user = User.query.get(user_id)
     todos = user.todos
-    return jsonify({'status': 200, 'message': 'successfully get all todos', 'data': todos}), 200
+    return render_template('index.html', todos=todos)
 
 @app.route('/todo', methods=['POST'])
 @jwt_required()
