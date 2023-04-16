@@ -1,9 +1,9 @@
 from config import app, db, jwt
-from flask import jsonify, redirect, render_template, request, make_response
-from flask_jwt_extended import create_access_token, jwt_required, get_jwt_identity, get_jwt
+from flask import jsonify, redirect, render_template, request, make_response, url_for, session
+from flask_jwt_extended import create_access_token, jwt_required, get_jwt_identity, set_access_cookies, unset_jwt_cookies
 from flask_bcrypt import generate_password_hash, check_password_hash
 from flask_wtf import FlaskForm
-# from flask_wtf.csrf import validate_csrf
+from flask_wtf.csrf import validate_csrf
 from wtforms import StringField, EmailField, BooleanField, validators
 from models.user import User
 from models.todo import Todo
@@ -18,6 +18,9 @@ class LoginForm(FlaskForm):
     email = EmailField('email', [validators.InputRequired(), validators.Email()])
     password = StringField('password', [validators.InputRequired()])
 
+class LogoutForm(FlaskForm):
+    csrf_token = StringField('csrf_token', [validators.InputRequired()])
+
 class TodoForm(FlaskForm):
     title = StringField('title', [validators.InputRequired()])
     description = StringField('description', [validators.InputRequired()])
@@ -29,44 +32,48 @@ def check_if_token_revoked(jwt_header, jwt_payload):
     token = db.session.query(TokenBlocklist.id).filter_by(jti=jti).scalar()
     return token is not None
 
-@app.route('/register', methods=['POST'])
+@app.route('/register', methods=['GET', 'POST'])
 def register():
-    # validate_csrf()
-    form = RegisterForm(request.form)
-    if form.validate():
-        password = form.password.data
-        hashed_password = generate_password_hash(password).decode('utf-8')
-        user = User(email=form.email.data, username=form.username.data, password=hashed_password)
-        db.session.add(user)
-        db.session.commit()
-        return jsonify({'status': 201, 'message': 'successfully created a new user'}), 201
-    else:
-        return jsonify({'status': 400, 'message': 'failed to create a new user', 'error': form.errors}), 400
+    if request.method == 'POST':
+        form = RegisterForm(request.form)
+        if form.validate():
+            password = form.password.data
+            hashed_password = generate_password_hash(password).decode('utf-8')
+            user = User(email=form.email.data, username=form.username.data, password=hashed_password)
+            db.session.add(user)
+            db.session.commit()
+            return render_template('login.html')
+    return render_template('register.html')
 
-@app.route('/login', methods=['POST'])
+@app.route('/login', methods=['GET', 'POST'])
 def login():
-    # validate_csrf()
-    form = LoginForm(request.form)
-    if form.validate():
-        user = User.query.filter_by(email=form.email.data).first()
-        if not user or not check_password_hash(user.password, form.password.data):
-            return jsonify({'status': 400, 'message': 'failed to login', 'error': form.errors}), 400
-        token = create_access_token(identity=user.id)
-        response = make_response(render_template('todo.html'))
-        response.set_cookie('auth-cookie', token)
-        return response
-        # return jsonify({'status': 200, 'message': 'successfully login', 'token': token}), 200
+    if request.method == 'POST':
+        form = LoginForm(request.form)
+        if form.validate():
+            user = User.query.filter_by(email=form.email.data).first()
+            if not user or not check_password_hash(user.password, form.password.data):
+                return redirect(url_for('login'))
+            acces_token = create_access_token(identity=user.id)
+            response = make_response(redirect(url_for('get_todos')))
+            set_access_cookies(response, acces_token)
+            return response
+    return render_template('login.html')
 
 @app.route('/logout', methods=['POST'])
-@jwt_required()
 def logout():
-    # jti = get_jwt()['jti']
-    # db.session.add(TokenBlocklist(jti=jti))
-    # db.session.commit()
-    # return jsonify({'status': 200, 'message': 'successfully logged out'}), 200
-    response = make_response(render_template('login.html'))
-    response.delete_cookie('auth-token')
-    return response
+    form = LogoutForm(request.form)
+    if form.validate():
+        csrf_token = form.csrf_token.data
+        try:
+            validate_csrf(csrf_token, secret_key=app.secret_key)
+        except:
+            return 'Invalid CSRF token', 400
+        session.clear()
+        response = make_response(redirect(url_for('login')))
+        unset_jwt_cookies(response)
+        response.delete_cookie('csrf_access_token')
+        return response
+    return render_template('todo.html')
 
 @app.route('/todo', methods=['GET'])
 @jwt_required()
@@ -74,7 +81,7 @@ def get_todos():
     user_id = get_jwt_identity()
     user = User.query.get(user_id)
     todos = user.todos
-    return render_template('index.html', todos=todos)
+    return render_template('todo.html', todos=todos)
 
 @app.route('/todo', methods=['POST'])
 @jwt_required()

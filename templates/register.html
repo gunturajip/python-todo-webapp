@@ -3,7 +3,7 @@
 <html>
 
 <head>
-    <title>Login User</title>
+    <title>Register User</title>
 
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -30,6 +30,7 @@
             padding: 24px;
         }
 
+        input[type="text"],
         input[type="email"],
         input[type="password"] {
             border: none;
@@ -41,6 +42,12 @@
             width: 100%;
         }
 
+        .buttons {
+            display: flex;
+            gap: 16px;
+        }
+
+        .login,
         input[type="submit"] {
             background-color: #007bff;
             border: none;
@@ -49,40 +56,37 @@
             cursor: pointer;
             font-size: 16px;
             padding: 8px;
-            width: 100%;
+            width: 50%;
+            text-align: center;
         }
 
+        .login:hover,
         input[type="submit"]:hover {
             background-color: #0069d9;
         }
 
-        .register {
-            margin-top: 16px;
-            text-align: center;
-        }
-
-        .register a {
-            color: #007bff;
+        a {
             text-decoration: none;
-        }
-
-        .register a:hover {
-            text-decoration: underline;
+            color: white;
         }
     </style>
 </head>
 
 <body>
-    <h1>Login User</h1>
-    <form action="/login" method="POST">
+    <h1>Pict</h1>
+    <form action="/register" method="POST">
         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <label for="name">Name:</label>
+        <input type="text" id="name" name="name" required>
         <label for="email">Email:</label>
         <input type="email" id="email" name="email" required>
         <label for="password">Password:</label>
         <input type="password" id="password" name="password" required>
-        <input type="submit" value="Login">
-        <div class="register">
-            <a href="{{ url_for('register')}}">New User ?</a>
+        <div class="buttons">
+            <div class="login">
+                <a href="{{ url_for('login')}}">Cancel</a>
+            </div>
+            <input type="submit" value="Confirm">
         </div>
     </form>
 </body>
