@@ -46,10 +46,10 @@ If you find this project useful, please consider giving it a ⭐️ on [GitHub](
 
 | Method | Endpoint                             | Description                              |
 | ------ | ------------------------------------ | ---------------------------------------- |
-| POST   | `/todo`                              | Create a new todo                        |
+| POST   | `/todo/create`                       | Create a new todo                        |
 | GET    | `/todo`                              | Get a list of todo                       |
 | GET    | `/todo/:todo_id`                     | Get a specific todo                      |
-| PUT    | `/todo/:todo_id`                     | Update a specific todo                   |
-| DELETE | `/todo/:todo_id`                     | Delete a specific todo                   |
-| POST   | `/todo/:todo_id/completed`           | Mark a spefific todo as completed        |
-| POST   | `/todo/:todo_id/uncompleted`         | Mark a specific todo as uncompleted      |
+| POST   | `/todo/:todo_id`                     | Update a specific todo                   |
+| GET    | `/todo/:todo_id/delete`              | Delete a specific todo                   |
+| GET    | `/todo/:todo_id/completed`           | Mark a spefific todo as completed        |
+| GET    | `/todo/:todo_id/uncompleted`         | Mark a specific todo as uncompleted      |
