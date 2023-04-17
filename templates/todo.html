@@ -41,6 +41,11 @@
         input[type="submit"]:hover {
             background-color: #0069d9;
         }
+
+        a {
+            text-decoration: none;
+            color: black;
+        }
     </style>
 </head>
 
@@ -57,31 +62,39 @@
     <!--Todo Table-->
     <div class="container">
         {% for todo in todos %}
-        <div style="border: 2px gray solid; padding: 8px;">
-            <div style="font-weight: bold;">{{ todo.title }}</div>
-            <div style="padding: 8px 0;">{{ todo.description }}</div>
-            <div style="display: flex; gap: 8px; max-width: 50%;">
-                <div>Edit</div>
-                <div>Delete</div>
-                {% if todo.completed %}
-                <div>Undone</div>
-                {% else %}
-                <div>Done</div>
+        {% if todo.completed %}
+        <div style="border: 2px #f1f5f9 solid; padding: 8px; background-color: #334155;">
+            {% else %}
+            <div style="border: 2px gray solid; padding: 8px;">
                 {% endif %}
+                {% if todo.completed %}
+                <div style="font-weight: bold;"><s>{{ todo.title }}</s></div>
+                <div style="padding: 8px 0;"><s>{{ todo.description }}</s></div>
+                {% else %}
+                <div style="font-weight: bold;">{{ todo.title }}</div>
+                <div style="padding: 8px 0;">{{ todo.description }}</div>
+                {% endif %}
+                <div style="display: flex; gap: 8px; max-width: 50%;">
+                    <a href="{{ url_for('get_todo', todo_id=todo.id )}}">Edit</a>
+                    <a href="{{ url_for('delete_todo', todo_id=todo.id, action='delete') }}"
+                        onclick="return confirm('Sure wanna delete this item?');">Delete</a>
+                    {% if todo.completed %}
+                    <a href="{{ url_for('mark_uncomplete', todo_id=todo.id )}}">Undone</a>
+                    {% else %}
+                    <a href="{{ url_for('mark_complete', todo_id=todo.id )}}">Done</a>
+                    {% endif %}
+                </div>
             </div>
-        </div>
-        {% endfor %}
+            {% endfor %}
 
-        <div class="container add-button">
-            <form action="/logout" method="POST">
-                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                <input type="submit" value="Logout">
-            </form>
-            <div
-                style="float: right; width: 60px; height: 60px; padding: 4px; border-radius: 90%; background: #007bff; color: white; text-align: center; font-size: 50px;">
-                +
+            <div class="container" style="padding-top: 16px;">
+                <a href="{{ url_for('add_todo', action='create') }}">
+                    <div
+                        style="float: right; width: 60px; height: 60px; padding: 4px; border-radius: 90%; background: #007bff; color: white; text-align: center; font-size: 50px;">
+                        +
+                    </div>
+                </a>
             </div>
-        </div>
 </body>
 
 <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>

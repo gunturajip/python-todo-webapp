@@ -1,4 +1,5 @@
 from config import app, db, jwt
+import jwt as j
 from flask import jsonify, redirect, render_template, request, make_response, url_for, session
 from flask_jwt_extended import create_access_token, jwt_required, get_jwt_identity, set_access_cookies, unset_jwt_cookies
 from flask_bcrypt import generate_password_hash, check_password_hash
@@ -7,7 +8,7 @@ from flask_wtf.csrf import validate_csrf
 from wtforms import StringField, EmailField, BooleanField, validators
 from models.user import User
 from models.todo import Todo
-from models.token_blocklist import TokenBlocklist
+# from models.token_blocklist import TokenBlocklist
 
 class RegisterForm(FlaskForm):
     email = EmailField('email', [validators.InputRequired(), validators.Email()])
@@ -26,11 +27,13 @@ class TodoForm(FlaskForm):
     description = StringField('description', [validators.InputRequired()])
     completed = BooleanField('completed')
 
-@jwt.token_in_blocklist_loader
-def check_if_token_revoked(jwt_header, jwt_payload):
-    jti = jwt_payload["jti"]
-    token = db.session.query(TokenBlocklist.id).filter_by(jti=jti).scalar()
-    return token is not None
+
+# @jwt.token_in_blocklist_loader
+# def check_if_token_revoked(jwt_header, jwt_payload):
+#     jti = jwt_payload["jti"]
+#     token = db.session.query(TokenBlocklist.id).filter_by(jti=jti).scalar()
+#     return token is not None
+
 
 @app.route('/register', methods=['GET', 'POST'])
 def register():
@@ -44,6 +47,7 @@ def register():
             db.session.commit()
             return render_template('login.html')
     return render_template('register.html')
+
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
@@ -59,21 +63,18 @@ def login():
             return response
     return render_template('login.html')
 
+
 @app.route('/logout', methods=['POST'])
 def logout():
     form = LogoutForm(request.form)
     if form.validate():
-        csrf_token = form.csrf_token.data
-        try:
-            validate_csrf(csrf_token, secret_key=app.secret_key)
-        except:
-            return 'Invalid CSRF token', 400
         session.clear()
         response = make_response(redirect(url_for('login')))
         unset_jwt_cookies(response)
         response.delete_cookie('csrf_access_token')
         return response
     return render_template('todo.html')
+
 
 @app.route('/todo', methods=['GET'])
 @jwt_required()
@@ -83,92 +84,89 @@ def get_todos():
     todos = user.todos
     return render_template('todo.html', todos=todos)
 
-@app.route('/todo', methods=['POST'])
-@jwt_required()
-def add_todo():
-    # validate_csrf()
-    user_id = get_jwt_identity()
-    user = User.query.get(user_id)
-    form = TodoForm(request.form)
-    if form.validate():
+
+@app.route('/todo/<action>', methods=['GET', 'POST'])
+def add_todo(action):
+    if request.method == 'POST':
+        access_token_cookie = request.cookies.get('access_token_cookie')
+        if not access_token_cookie:
+            return redirect(url_for('login'))
+        try:
+            token = j.decode(access_token_cookie, app.config['JWT_SECRET_KEY'], algorithms=['HS256'])
+            user_id = token.get('sub')
+        except:
+            return redirect(url_for('login'))
+
+        user = User.query.get(user_id)
+        form = TodoForm(request.form)
+        if not form.validate():
+            return render_template('add_edit.html')
         todo = Todo(title=form.title.data, description=form.description.data, user_id=user.id)
         db.session.add(todo)
         db.session.commit()
-        return jsonify({'status': 201, 'message': 'successfully created a new todo'}), 201
-    else:
-        return jsonify({'status': 400, 'message': 'failed to create a new todo', 'error': form.errors}), 400
+        return redirect(url_for('get_todos'))
+    return render_template('add_edit.html', action=action)
+
 
 @app.route('/todo/<int:todo_id>', methods=['GET'])
 @jwt_required()
 def get_todo(todo_id):
-    user_id = get_jwt_identity()
     todo = Todo.query.get(todo_id)
-    if todo:
-        if todo.user_id != user_id:
-            return jsonify({'status': 401, 'message': 'you are not allowed to access this todo'}), 401
-        return jsonify({'status': 200, 'message': 'successfully get current todo', 'data': todo}), 200
-    else:
-        return jsonify({'status': 404, 'message': 'current todo doesn\'t exist'}), 404
+    return render_template('add_edit.html', todo=todo)
 
-@app.route('/todo/<int:todo_id>', methods=['PUT'])
-@jwt_required()
+
+@app.route('/todo/<int:todo_id>', methods=['POST'])
 def update_todo(todo_id):
-    # validate_csrf()
-    user_id = get_jwt_identity()
-    todo = Todo.query.get(todo_id)
-    if todo:
-        if todo.user_id != user_id:
-            return jsonify({'status': 401, 'message': 'you are not allowed to access this todo'}), 401
-        form = TodoForm(request.form)
-        if form.validate():
-            todo.title = form.title.data
-            todo.description = form.description.data
-            todo.completed = form.completed.data if form.completed.data else False
-            db.session.commit()
-            return jsonify({'status': 200, 'message': 'successfully updated current todo'}), 200
-        else:
-            return jsonify({'status': 400, 'message': 'failed to update current todo', 'error': form.errors}), 400
-    else:
-        return jsonify({'status': 404, 'message': 'current todo doesn\'t exist'}), 404
+    access_token_cookie = request.cookies.get('access_token_cookie')
+    if not access_token_cookie:
+        return redirect(url_for('login'))
+    try:
+        token = j.decode(access_token_cookie, app.config['JWT_SECRET_KEY'], algorithms=['HS256'])
+    except:
+        return redirect(url_for('login'))
 
-@app.route('/todo/<int:todo_id>/completed', methods=['POST'])
+    todo = Todo.query.get(todo_id)
+    form = TodoForm(request.form)
+    if not form.validate():
+        return redirect(url_for('update_todo(todo.id)'))
+
+    todo.title = form.title.data
+    todo.description = form.description.data
+    todo.completed = form.completed.data if form.completed.data else False
+    db.session.commit()
+    return redirect(url_for('get_todos'))
+
+
+@app.route('/todo/<int:todo_id>/completed', methods=['GET'])
 @jwt_required()
 def mark_complete(todo_id):
-    user_id = get_jwt_identity()
     todo = Todo.query.get(todo_id)
-    if todo:
-        if todo.user_id != user_id:
-            return jsonify({'status': 401, 'message': 'you are not allowed to access this todo'}), 401
-        todo.completed = True
-        db.session.commit()
-        return jsonify({'status': 200, 'message': 'successfully marked todo as completed'}), 200
-    else:
-        return jsonify({'status': 404, 'message': 'current todo doesn\'t exist'}), 404
+    todo.completed = True
+    db.session.commit()
+    return redirect(url_for('get_todos'))
 
-@app.route('/todo/<int:todo_id>/uncompeted', methods=['POST'])
+
+@app.route('/todo/<int:todo_id>/uncompleted', methods=['GET'])
 @jwt_required()
 def mark_uncomplete(todo_id):
-    user_id = get_jwt_identity()
     todo = Todo.query.get(todo_id)
-    if todo:
-        if todo.user_id != user_id:
-            return jsonify({'status': 401, 'message': 'you are not allowed to access this todo'}), 401
-        todo.completed = False
-        db.session.commit()
-        return jsonify({'status': 200, 'message': 'successfully marked todo as uncompleted'}), 200
-    else:
-        return jsonify({'status': 404, 'message': 'current todo doesn\'t exist'}), 404
+    todo.completed = False
+    db.session.commit()
+    return redirect(url_for('get_todos'))
 
-@app.route('/todo/<int:todo_id>', methods=['DELETE'])
-@jwt_required()
-def delete_todo(todo_id):
-    user_id = get_jwt_identity()
-    todo = Todo.query.get(todo_id)
-    if todo:
-        if todo.user_id != user_id:
-            return jsonify({'status': 401, 'message': 'you are not allowed to access this todo'}), 401
+
+@app.route('/todo/<int:todo_id>/<action>', methods=['GET'])
+def delete_todo(todo_id, action):
+    access_token_cookie = request.cookies.get('access_token_cookie')
+    if not access_token_cookie:
+        return redirect(url_for('login'))
+    try:
+        token = j.decode(access_token_cookie, app.config['JWT_SECRET_KEY'], algorithms=['HS256'])
+    except:
+        return redirect(url_for('login'))
+    
+    if action == 'delete':
+        todo = Todo.query.get(todo_id)
         db.session.delete(todo)
         db.session.commit()
-        return jsonify({'status': 200, 'message': 'successfully deleted current todo'}), 200
-    else:
-        return jsonify({'status': 404, 'message': 'current todo doesn\'t exist'}), 404
+        return redirect(url_for('get_todos'))
