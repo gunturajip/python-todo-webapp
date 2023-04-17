@@ -1,6 +1,6 @@
-from config import app, db, jwt
+from config import app, db
 import jwt as j
-from flask import jsonify, redirect, render_template, request, make_response, url_for, session
+from flask import redirect, render_template, request, make_response, url_for, session
 from flask_jwt_extended import create_access_token, jwt_required, get_jwt_identity, set_access_cookies, unset_jwt_cookies
 from flask_bcrypt import generate_password_hash, check_password_hash
 from flask_wtf import FlaskForm
@@ -8,11 +8,10 @@ from flask_wtf.csrf import validate_csrf
 from wtforms import StringField, EmailField, BooleanField, validators
 from models.user import User
 from models.todo import Todo
-# from models.token_blocklist import TokenBlocklist
 
 class RegisterForm(FlaskForm):
     email = EmailField('email', [validators.InputRequired(), validators.Email()])
-    username = StringField('username', [validators.InputRequired()])
+    name = StringField('name', [validators.InputRequired()])
     password = StringField('password', [validators.InputRequired()])
 
 class LoginForm(FlaskForm):
@@ -28,13 +27,6 @@ class TodoForm(FlaskForm):
     completed = BooleanField('completed')
 
 
-# @jwt.token_in_blocklist_loader
-# def check_if_token_revoked(jwt_header, jwt_payload):
-#     jti = jwt_payload["jti"]
-#     token = db.session.query(TokenBlocklist.id).filter_by(jti=jti).scalar()
-#     return token is not None
-
-
 @app.route('/register', methods=['GET', 'POST'])
 def register():
     if request.method == 'POST':
@@ -42,7 +34,7 @@ def register():
         if form.validate():
             password = form.password.data
             hashed_password = generate_password_hash(password).decode('utf-8')
-            user = User(email=form.email.data, username=form.username.data, password=hashed_password)
+            user = User(email=form.email.data, name=form.name.data, password=hashed_password)
             db.session.add(user)
             db.session.commit()
             return render_template('login.html')

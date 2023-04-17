@@ -20,7 +20,7 @@ To run the project locally, follow these steps:
      `source bin/activate`
 3. Install the required dependencies
      `pip install -r requirements.txt`
-4. Set up the database and environment variables
+4. Set up the database and environment variables (ensure you have installed PostgreSQL and create new database whose name is attached in .env)
    - For Windows:
      Type the following command in VS Code terminal:
      `flask db init`
