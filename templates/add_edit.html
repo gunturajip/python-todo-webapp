@@ -79,9 +79,11 @@
         <label for="description">Description:</label>
         <input type="text" id="description" name="description" required>
         <div class="buttons">
-            <div class="login">
-                <a href="{{ url_for('get_todos')}}">Cancel</a>
-            </div>
+            <a href="{{ url_for('get_todos')}}">
+                <div class="login">
+                    Cancel
+                </div>
+            </a>
             <input type="submit" value="Add">
         </div>
     </form>
@@ -93,9 +95,11 @@
         <label for="description">Description:</label>
         <input type="text" id="description" name="description" value="{{ todo.description }}" required>
         <div class="buttons">
-            <div class="login">
-                <a href="{{ url_for('get_todos')}}">Cancel</a>
-            </div>
+            <a href="{{ url_for('get_todos')}}">
+                <div class="login">
+                    Cancel
+                </div>
+            </a>
             <input type="submit" value="Edit">
         </div>
     </form>
